@@ -1,0 +1,60 @@
+{
+  "name": "Mikael Ingest",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b78a69ae-6004-40c2-8aae-3db502eae61c",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5218/ingest",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"source\": \"transcript\",\n  \"title\": \"Test från n8n\",\n  \"text\": \"Mikael: Det vanligaste misstaget är att tro att chefsrollen är en förlängning av specialistrollen. Du bytte spel mitt i matchen.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "939d9a8b-106f-4ec1-b035-cb3c1ce22d27",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "13cbabf2-66a1-4dfa-a0d8-0b9edaa811e7",
+  "meta": {
+    "instanceId": "2f5dfdf0e0a43996d675cbe4d3c0cc2ce6e84336d9c56ef6c99a412270e57673"
+  },
+  "nodeGroups": [],
+  "id": "k4ybpkaYZjkVuHch",
+  "tags": []
+}
