@@ -1,32 +1,18 @@
 # ARBETSLOGG
 
-Löpande logg över bygget. Råmaterial till den kritiska reflektionen — skriv kort men
-ofta. Fånga: designval och varför, var Cursor/AI hjälpte och var den behövde rättas,
-problem du stötte på och hur du löste dem, och eventuella diskussioner med andra som
-valt samma case (vem, om vad).
+Löpande anteckningar under bygget. Råmaterial till reflektionen.
+Tre frågor att ha i bakhuvudet när du skriver:
+- Vad funkade?
+- Vad funkade inte / vad skulle du gjort annorlunda?
+- När var AI rätt verktyg, och när var det inte det?
 
-> Det här dokumentet lämnas inte in — det matar reflektionen. Var ärlig och konkret.
-
----
-
-## Mall för en post
-
-**Vad jag gjorde:**
-**Beslut / varför:**
-**AI:n (Cursor):** hjälpte med … / fick rättas på …
-**Problem & lösning:**
-**Avvikelse från Inlämning 1?** (om ja → lägg även i PLAN.md §7b)
+Skriv kort, skriv ofta. Behöver inte vara snyggt.
 
 ---
 
-## Poster
+Stod mellan EF Core eller Dapper och jag valde Dapper. Vektorsökningen är ändå rå SQL.
 
-### Setup
-**Vad jag gjorde:** Satte upp repo, docker-compose (Postgres 17 + pgvector, n8n),
-Cursor-regel som läser PLAN.md.
-**Beslut / varför:** pgvector i samma DB för att hålla retrieval som SQL och slippa en
-separat vektortjänst.
-**AI:n (Cursor):**
-**Problem & lösning:**
-**Avvikelse från Inlämning 1?** Embeddings + Whisper körs lokalt i stället för OpenAI
-(kostnad + integritet). Noterat i PLAN.md §7b.
+Embeddings och Whisper körs lokalt istället för OpenAI API. Kostnad + integritet: Mikaels råmaterial lämnar aldrig maskinen. Lite mer setup, men värt det.
+
+Scaffold av API:t (Program.cs, request-modeller, tomma IngestService/GenerateService, db/schema.sql). Endpoints returnerar 501 tills logiken byggs. Valde att läsa DATABASE_URL från .env med en liten egen parser i Program.cs istället för att dra in DotNetEnv.
+
