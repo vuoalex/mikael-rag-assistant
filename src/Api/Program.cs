@@ -7,7 +7,7 @@ using Pgvector.Dapper;
 var builder = WebApplication.CreateBuilder(args);
 
 // Load .env (DATABASE_URL etc.) — secrets live there, never in appsettings.
-LoadDotEnv(builder.Environment.ContentRootPath);
+LoadDotEnv();
 
 builder.Services.AddOpenApi();
 
@@ -96,9 +96,31 @@ app.MapGet("/health", async (NpgsqlDataSource dataSource) =>
 
 app.Run();
 
-// Minimal .env loader: walk up from the content root and set any KEY=VALUE pairs
-// not already present in the environment. Avoids an extra package dependency.
-static void LoadDotEnv(string startPath)
+// Minimal .env loader: find the nearest .env by walking up the directory tree,
+// then set any KEY=VALUE pairs not already present in the environment. Avoids an
+// extra package dependency.
+//
+// We search from two anchors. The current working directory is tried first so a
+// .env next to where you launch still wins. We then fall back to the directory of
+// the running assembly (AppContext.BaseDirectory, e.g. src/Api/bin/Debug/...),
+// which is always inside the project tree — so the repo-root .env is found even
+// when the working directory is not an ancestor of it (the case with
+// `dotnet run --project src/Api`).
+static void LoadDotEnv()
+{
+    string[] startPaths = [Directory.GetCurrentDirectory(), AppContext.BaseDirectory];
+
+    foreach (var startPath in startPaths)
+    {
+        if (TryLoadEnvFrom(startPath))
+        {
+            return;
+        }
+    }
+}
+
+// Walk up from startPath looking for a .env file; load it if found.
+static bool TryLoadEnvFrom(string startPath)
 {
     var dir = new DirectoryInfo(startPath);
     while (dir is not null)
@@ -129,9 +151,11 @@ static void LoadDotEnv(string startPath)
                 }
             }
 
-            return;
+            return true;
         }
 
         dir = dir.Parent;
     }
+
+    return false;
 }
