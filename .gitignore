@@ -1,0 +1,28 @@
+# Secrets — never commit
+.env
+*.key
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# Python (embedding service / whisper helper)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Whisper / model caches & audio
+models/
+*.wav
+*.mp3
+*.m4a
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# n8n local data (if mounted into the repo)
+.n8n/

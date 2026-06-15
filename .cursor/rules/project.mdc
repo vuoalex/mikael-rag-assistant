@@ -1,0 +1,17 @@
+---
+description: Project context for the Mikael Hammar RAG assistant
+alwaysApply: true
+---
+
+Always read PLAN.md in the project root before answering. It is the authoritative
+spec — case, contract, architecture, data model, endpoints, RAG details, security
+mapping, build phases, and the deviations log. Build against it.
+
+Key rules for this project:
+- Technical content (code, comments, commits, README) is written in English.
+- Conventional Commits (feat:, fix:, docs:, refactor:, chore:, test:), imperative mood.
+- Secrets live in .env only (gitignored). Never hardcode keys.
+- Generation uses Anthropic Claude Sonnet. Embeddings and Whisper run locally.
+- If a change deviates from PLAN.md, flag it and add it to the "Deviations from
+  Inlämning 1" section so it can be motivated in the reflection.
+- Keep ARBETSLOGG.md updated with design choices and where AI help had to be corrected.
