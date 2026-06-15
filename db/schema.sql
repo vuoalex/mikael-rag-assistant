@@ -13,7 +13,7 @@ CREATE TABLE chunks (
     document_id  uuid NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     chunk_index  int  NOT NULL,
     content      text NOT NULL,
-    embedding    vector(384) NOT NULL,
+    embedding    vector(1536) NOT NULL,
     token_count  int
 );
 

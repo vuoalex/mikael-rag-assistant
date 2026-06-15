@@ -1,6 +1,8 @@
 using Api.Models;
 using Api.Services;
+using Dapper;
 using Npgsql;
+using Pgvector.Dapper;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,10 +12,21 @@ LoadDotEnv(builder.Environment.ContentRootPath);
 builder.Services.AddOpenApi();
 
 // Register a single shared NpgsqlDataSource built from DATABASE_URL.
+// UseVector() maps pgvector's `vector` type; the Dapper type handler lets us
+// pass/read Pgvector.Vector values in Dapper queries.
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? throw new InvalidOperationException("DATABASE_URL is not set. Copy .env.example to .env.");
 
-builder.Services.AddSingleton(NpgsqlDataSource.Create(databaseUrl));
+SqlMapper.AddTypeHandler(new VectorTypeHandler());
+
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(databaseUrl);
+dataSourceBuilder.UseVector();
+builder.Services.AddSingleton(dataSourceBuilder.Build());
+
+builder.Services.AddHttpClient("anthropic", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(120);
+});
 
 builder.Services.AddScoped<IngestService>();
 builder.Services.AddScoped<GenerateService>();
@@ -27,22 +40,58 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// POST /ingest — chunk → embed → store. (stub)
-app.MapPost("/ingest", (IngestRequest request, IngestService service) =>
+// POST /ingest — chunk → embed → store.
+app.MapPost("/ingest", async (IngestRequest request, IngestService service) =>
 {
-    return Results.Problem("Not implemented", statusCode: StatusCodes.Status501NotImplemented);
+    if (string.IsNullOrWhiteSpace(request.Text))
+    {
+        return Results.BadRequest(new { error = "Text must not be empty." });
+    }
+
+    var result = await service.IngestAsync(request);
+    return Results.Ok(new { documentId = result.DocumentId, chunkCount = result.ChunkCount });
 });
 
-// POST /generate — retrieve → Claude → draft. (stub)
-app.MapPost("/generate", (GenerateRequest request, GenerateService service) =>
+// POST /generate — embed query → retrieve → Claude → draft.
+app.MapPost("/generate", async (GenerateRequest request, GenerateService service) =>
 {
-    return Results.Problem("Not implemented", statusCode: StatusCodes.Status501NotImplemented);
+    if (string.IsNullOrWhiteSpace(request.Input))
+    {
+        return Results.BadRequest(new { error = "Input must not be empty." });
+    }
+
+    var result = await service.GenerateAsync(request);
+    return Results.Ok(new
+    {
+        draft = result.Draft,
+        usedChunks = result.UsedChunks,
+        flagged = result.Flagged,
+    });
 });
 
-// GET /health — liveness check. (stub)
-app.MapGet("/health", () =>
+// GET /health — liveness check: DB reachable + required keys present.
+app.MapGet("/health", async (NpgsqlDataSource dataSource) =>
 {
-    return Results.Problem("Not implemented", statusCode: StatusCodes.Status501NotImplemented);
+    var keysPresent = Environment.GetEnvironmentVariable("OPENAI_API_KEY") is not null
+        && Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY") is not null;
+
+    bool dbReachable;
+    try
+    {
+        await using var connection = await dataSource.OpenConnectionAsync();
+        dbReachable = await connection.ExecuteScalarAsync<int>("SELECT 1") == 1;
+    }
+    catch
+    {
+        dbReachable = false;
+    }
+
+    var healthy = keysPresent && dbReachable;
+    var payload = new { status = healthy ? "ok" : "degraded", dbReachable, keysPresent };
+
+    return healthy
+        ? Results.Ok(payload)
+        : Results.Json(payload, statusCode: StatusCodes.Status503ServiceUnavailable);
 });
 
 app.Run();

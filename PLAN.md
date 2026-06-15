@@ -56,21 +56,23 @@ Any deviation from this is fine **if it is motivated** in the reflection.
         └───────┬─────────────────────────┬──────────────┘
                 │                          │
                 ▼                          ▼
-   ┌────────────────────────┐   ┌──────────────────────────┐
-   │  Postgres 17 + pgvector │   │  Models                   │
-   │  documents              │   │  - embeddings: LOCAL e5   │
-   │  chunks (vector col)    │   │  - Whisper: LOCAL         │
-   │  generations (log)      │   │  - Anthropic Claude (paid)│
-   └────────────────────────┘   └──────────────────────────┘
+   ┌────────────────────────┐   ┌──────────────────────────────┐
+   │  Postgres 17 + pgvector │   │  Models                       │
+   │  documents              │   │  - embeddings: OpenAI         │
+   │  chunks (vector col)    │   │    text-embedding-3-small     │
+   │  generations (log)      │   │  - Whisper: LOCAL             │
+   │                         │   │  - Anthropic Claude (paid)    │
+   └────────────────────────┘   └──────────────────────────────┘
 
-   Only paid component: Claude Sonnet. Embeddings + transcription run locally.
+   Paid components: Claude Sonnet (generation) + OpenAI embeddings (pennies for
+   test data). Transcription runs locally.
 ```
 
 ### Components
 - **Backend:** .NET 10 Web API (minimal API is fine)
 - **Database:** Postgres 17 with the `pgvector` extension, in Docker
-- **Embeddings:** local `intfloat/multilingual-e5-small` (384 dims) — runs on your
-  machine, good at Swedish, no API cost
+- **Embeddings:** OpenAI `text-embedding-3-small` (1536 dims) — called directly from
+  .NET via the OpenAI SDK, strong multilingual quality, costs pennies for test data
 - **Generation:** Anthropic Claude Sonnet (`claude-sonnet-4-6`) — the only paid part
 - **Transcription:** Whisper running locally (e.g. `faster-whisper`, `small`/`base`
   model), called from n8n. No API cost; audio never leaves the machine.
@@ -149,9 +151,9 @@ Liveness check (DB reachable, keys present).
 
 - **Chunking:** by paragraph, target ~400–600 tokens, small overlap (~50). Keep it
   simple; transcripts are conversational so paragraph splits work well.
-- **Embedding:** local `multilingual-e5-small`, 384 dims. Note the e5 quirk: prefix
-  passages with `passage: ` and queries with `query: ` before embedding — the model
-  was trained that way and skipping it hurts retrieval quality.
+- **Embedding:** OpenAI `text-embedding-3-small`, 1536 dims, called directly from
+  .NET via the OpenAI SDK. No prefix quirk to manage (unlike e5): the same call is
+  used for both passages and queries.
 - **Retrieval:** cosine distance (`<=>`), top-k = 5. Tune if drafts feel thin.
 - **Generation prompt:** system prompt instructs Claude to write a LinkedIn post in
   Mikael's voice, grounded **only** in the retrieved context, no invented facts.
@@ -179,6 +181,21 @@ justification in the Swedish reflection — the teacher allows changes *if motiv
   (`multilingual-e5-small`). *Motivation:* lower/zero cost, and Mikael's raw material
   never leaves the machine (privacy). Trade-off: slightly more setup, model weights
   downloaded once.
+- **Embeddings run as a separate Python sidecar, not inside the .NET process.**
+  _(Superseded — see the OpenAI entry below. The sidecar was removed.)_ The e5 model
+  is a Python/PyTorch model with no first-class .NET runtime, so the backend was going
+  to call a small FastAPI service over HTTP. *Motivation at the time:* use the model's
+  native ecosystem, keep the e5 `passage: `/`query: ` prefix and normalization in one
+  place. Trade-off: one extra local process to run.
+- **Embeddings switched from local e5-small to OpenAI `text-embedding-3-small`.**
+  Local `torch` would not run on this Windows machine — it failed with
+  `WinError 1114` (a DLL initialization routine failed), a native dependency conflict
+  that made the local sidecar effectively unrunnable. Rather than burn build time on
+  Windows DLL debugging, embeddings now call OpenAI `text-embedding-3-small`
+  (1536 dims) directly from .NET via the OpenAI SDK. *Motivation:* unblock the build;
+  cost is pennies for the test data set. Trade-off: embeddings are no longer local, so
+  the "raw material never leaves the machine" privacy claim now applies to
+  transcription (local Whisper) only — chunk text is sent to OpenAI for embedding.
 - _(add further deviations here as they come up)_
 
 ---

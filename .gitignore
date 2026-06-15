@@ -26,3 +26,5 @@ Thumbs.db
 
 # n8n local data (if mounted into the repo)
 .n8n/
+
+ARBETSLOGG.md
