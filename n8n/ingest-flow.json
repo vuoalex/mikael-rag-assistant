@@ -6,7 +6,7 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        0,
+        -608,
         0
       ],
       "id": "b78a69ae-6004-40c2-8aae-3db502eae61c",
@@ -18,7 +18,7 @@
         "url": "http://host.docker.internal:5218/ingest",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"source\": \"transcript\",\n  \"title\": \"Test från n8n\",\n  \"text\": \"Mikael: Det vanligaste misstaget är att tro att chefsrollen är en förlängning av specialistrollen. Du bytte spel mitt i matchen.\"\n}",
+        "jsonBody": "{\n  \"source\": \"transcript\",\n  \"title\": \"Transkriberat kundsamtal\",\n  \"text\": \"{{ $json.text }}\"\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -29,6 +29,41 @@
       ],
       "id": "939d9a8b-106f-4ec1-b035-cb3c1ce22d27",
       "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        -128,
+        0
+      ],
+      "id": "31c8d8cf-7f08-45b0-992b-f931b5430dbf",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "IABhlljXaEn90vlw",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/node/.n8n-files/delegering.mp3",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -368,
+        0
+      ],
+      "id": "639e7e6b-d2ed-45c3-bde0-e903df6a7ee0",
+      "name": "Read/Write Files from Disk"
     }
   ],
   "pinData": {},
@@ -37,7 +72,29 @@
       "main": [
         [
           {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
             "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
             "type": "main",
             "index": 0
           }
@@ -48,10 +105,12 @@
   "active": false,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "availableInMCP": false
   },
-  "versionId": "13cbabf2-66a1-4dfa-a0d8-0b9edaa811e7",
+  "versionId": "48d37de1-f625-44b8-b137-28ef1af9fb8f",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "2f5dfdf0e0a43996d675cbe4d3c0cc2ce6e84336d9c56ef6c99a412270e57673"
   },
   "nodeGroups": [],
