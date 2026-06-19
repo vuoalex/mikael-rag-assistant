@@ -1,45 +1,49 @@
 # Mikael Hammar RAG Assistant
 
-A RAG-based assistant that turns a consultant's recorded client conversations into
-LinkedIn post drafts **in his own voice** — grounded in his own material, not generic
-AI text. Built for case *Mikael Hammar* (Inlämning 2).
-
-See [PLAN.md](./PLAN.md) for the full spec (architecture, data model, endpoints).
+A RAG-based assistant that turns a consultant's recorded client conversations into LinkedIn post drafts in his own voice - that bases its output on previous material, not generic AI text.
 
 ## Stack
 
-- **.NET 10** Web API (backend + business logic)
+- **.NET 10** Web API
 - **Postgres 17 + pgvector** (storage + vector retrieval)
-- **OpenAI `text-embedding-3-small`** — embeddings (1536 dims), called from .NET
-- **Local Whisper** — `faster-whisper` (transcription, called from n8n)
-- **Anthropic Claude Sonnet** — generation (the only paid component)
-- **n8n** — automation flow (audio → transcript → ingest)
+- **n8n** — automation flow (audio -> transcript -> /ingest)
+- **OpenAI `text-embedding-3-small`** — embeddings, called from .NET
+- **OpenAI Whisper** — transcription, called from n8n
+- **Anthropic Claude Sonnet** — generation
 
-> Embeddings moved from a local `multilingual-e5-small` sidecar to OpenAI after the
-> local `torch` setup failed on Windows. See the deviations log in PLAN.md §7b.
+## How it works
+
+1. An n8n flow transcribes an audio file (OpenAI Whisper) and posts the text to the backend.
+2. The backend chunks the text, creates embeddings (OpenAI) and stores them in Postgres with pgvector.
+3. For a new client conversation, the backend retrieves the most relevant chunks and Claude Sonnet writes a draft grounded in them.
+
+<img width="5504" height="1560" alt="image" src="https://github.com/user-attachments/assets/cf9e81d6-4088-46cf-a6bd-b9691796fd83" />
+
 
 ## Setup
 
+Requires your own API keys (OpenAI + Anthropic).
+
 ```bash
-# 1. Copy env template and fill in your key(s)
+# 1. Copy env template and fill in your keys
 cp .env.example .env
 
 # 2. Start Postgres + n8n
 docker compose up -d
 
-# 3. Run the backend
+# 3. Run the database schema
+Get-Content db/schema.sql | docker compose exec -T db psql -U mikael -d mikael_rag
+
+# 4. Run the backend
 dotnet run --project src/Api
 ```
 
-n8n runs at http://localhost:5678 — see PLAN.md §7 for the flow.
+The backend runs at http://localhost:5218, n8n at http://localhost:5678.
 
 ## Documentation
 
-- Security analysis (OWASP LLM Top 10) — `docs/sakerhetsanalys.pdf` *(Swedish)*
-- Critical reflection — `docs/reflektion.pdf` *(Swedish)*
+- **Security analysis & critical reflection** (Swedish) — written for a school assignment
 
 ## Note
 
-Transcription runs locally (Whisper), so audio never leaves the machine. Chunk text
-is sent to OpenAI for embedding and to Anthropic for generation. API keys are kept in
-`.env` (gitignored).
+This is a local MVP. Transcription (Whisper), embeddings, and generation all call external APIs, so client material does leave the machine at those points; only the database is local. API keys are kept in `.env` (gitignored).
